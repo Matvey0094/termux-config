@@ -14,11 +14,11 @@ RAW_BASE="https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}"
 
 # Repo file layout (you keep files in repo under .config/fastfetch/)
 REPO_CFG_PATH=".config/fastfetch/config.jsonc"
-REPO_LOGO_PATH=".config/fastfetch/cat.txt"
+REPO_LOGO_PATH=".config/fastfetch/logo.txt"
 
 CFG_DIR="${HOME}/.config/fastfetch"
 CFG_FILE="${CFG_DIR}/config.jsonc"
-LOGO_FILE="${CFG_DIR}/cat.txt"
+LOGO_FILE="${CFG_DIR}/logo.txt"
 
 PKGS="curl git nano fastfetch"
 
