@@ -79,16 +79,16 @@ pkg upgrade -y >/dev/null 2>&1 || true
 pkg install -y $PKGS >/dev/null 2>&1 || fail "pkg install failed"
 ok "Packages installed"
 
-step "Set zsh as default + add aliases"
+step "Set zsh as default (Termux)"
 ZSH_PATH="${PREFIX}/bin/zsh"
 
-# 1) Set default shell via chsh (no fallback)
-if have chsh && [ -x "$ZSH_PATH" ]; then
-  chsh -s "$ZSH_PATH" >/dev/null 2>&1 || fail "chsh failed to set zsh as default shell"
-  ok "Default shell set to zsh"
-else
-  fail "Cannot set default shell: chsh not found or zsh missing"
-fi
+[ -x "$ZSH_PATH" ] || fail "zsh not found at: $ZSH_PATH"
+
+mkdir -p "${HOME}/.termux"
+ln -sf "$ZSH_PATH" "${HOME}/.termux/shell" || fail "Failed to set ~/.termux/shell"
+
+ok "Default shell set to zsh for new Termux sessions"
+warn "Close ALL Termux sessions and reopen the app to apply"
 
 # 2) Add aliases for zsh
 ZSHRC="${HOME}/.zshrc"
