@@ -24,11 +24,24 @@ PKGS="curl git nano fastfetch"
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
-echo "[1/6] Installing required packages…"
+echo "[1/8] Installing required packages…"
 # shellcheck disable=SC2086
 pkg install -y $PKGS
 
-echo "[2/7] Installing Inconsolata Nerd Font Mono…"
+echo "[2/8] Disabling Termux welcome message…"
+
+# Disable login/welcome messages for this user
+touch "${HOME}/.hushlogin"
+
+# Also clear Termux MOTD if it exists (safe to ignore if not present)
+MOTD_USR="${PREFIX}/etc/motd"
+MOTD_TERMUX="${PREFIX}/etc/motd.sh"
+[ -f "$MOTD_USR" ] && : > "$MOTD_USR" || true
+[ -f "$MOTD_TERMUX" ] && : > "$MOTD_TERMUX" || true
+
+echo "[MOTD] Done."
+
+echo "[3/8] Installing Inconsolata Nerd Font Mono…"
 
 TERMUX_DIR="${HOME}/.termux"
 FONT_FILE="${TERMUX_DIR}/font.ttf"
@@ -51,25 +64,25 @@ fi
 
 echo "[FONT] Done. If you don't see changes: fully restart Termux."
 
-echo "[3/7] Setting up storage access…"
+echo "[4/8] Setting up storage access…"
 # this will ask Android permission (safe to re-run)
 if have termux-setup-storage; then
   termux-setup-storage || true
 fi
 
-echo "[4/7] Preparing config directory…"
+echo "[5/8] Preparing config directory…"
 mkdir -p "$CFG_DIR"
 
-echo "[5/7] Backing up existing files (if any)…"
+echo "[6/8] Backing up existing files (if any)…"
 ts="$(date +%Y%m%d-%H%M%S)"
 [ -f "$CFG_FILE" ] && cp -f "$CFG_FILE" "${CFG_FILE}.bak-${ts}"
 [ -f "$LOGO_FILE" ] && cp -f "$LOGO_FILE" "${LOGO_FILE}.bak-${ts}"
 
-echo "[5/6] Downloading config & logo from GitHub…"
+echo "[7/8] Downloading config & logo from GitHub…"
 curl -fsSL "${RAW_BASE}/${REPO_CFG_PATH}" -o "$CFG_FILE"
 curl -fsSL "${RAW_BASE}/${REPO_LOGO_PATH}" -o "$LOGO_FILE"
 
-echo "[7/7] Test run…"
+echo "[8/8] Test run…"
 fastfetch || true
 
 # ===== Autostart (AUTO=1) ===============================================
