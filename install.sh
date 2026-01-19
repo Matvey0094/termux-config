@@ -60,7 +60,7 @@ TERMUX_DIR="${HOME}/.termux"
 FONT_FILE="${TERMUX_DIR}/font.ttf"
 FONT_URL="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/Inconsolata/InconsolataNerdFontMono-Regular.ttf"
 
-PKGS="termux-tools curl git nano nano-syntax-highlighting fastfetch"
+PKGS="termux-tools curl git nano fastfetch"
 
 # ─────────────────────────────── Banner ───────────────────────────────
 printf "%s\n" "${C_PURP}${BOLD}╔══════════════════════════════════════════════════════════════════════╗${RST}"
