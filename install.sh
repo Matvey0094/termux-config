@@ -24,40 +24,39 @@ PKGS="curl git nano fastfetch"
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
-echo "[1/7] Updating packages…"
-pkg update -y
-pkg upgrade -y
-
-echo "[2/7] Installing required packages…"
+echo "[1/6] Installing required packages…"
 # shellcheck disable=SC2086
 pkg install -y $PKGS
 
-echo "[3/7] Setting up storage access…"
+echo "[2/6] Setting up storage access…"
 # this will ask Android permission (safe to re-run)
 if have termux-setup-storage; then
   termux-setup-storage || true
 fi
 
-echo "[4/7] Preparing config directory…"
+echo "[3/6] Preparing config directory…"
 mkdir -p "$CFG_DIR"
 
-echo "[5/7] Backing up existing files (if any)…"
+echo "[4/6] Backing up existing files (if any)…"
 ts="$(date +%Y%m%d-%H%M%S)"
 [ -f "$CFG_FILE" ] && cp -f "$CFG_FILE" "${CFG_FILE}.bak-${ts}"
 [ -f "$LOGO_FILE" ] && cp -f "$LOGO_FILE" "${LOGO_FILE}.bak-${ts}"
 
-echo "[6/7] Downloading config & logo from GitHub…"
+echo "[5/6] Downloading config & logo from GitHub…"
 curl -fsSL "${RAW_BASE}/${REPO_CFG_PATH}" -o "$CFG_FILE"
 curl -fsSL "${RAW_BASE}/${REPO_LOGO_PATH}" -o "$LOGO_FILE"
 
-echo "[7/7] Test run…"
+echo "[6/6] Test run…"
 fastfetch || true
 
-# Optional: enable autostart (AUTO=1)
+# ===== Autostart (AUTO=1) ===============================================
 if [ "${AUTO:-0}" = "1" ]; then
+  echo "[AUTO] Enabling autostart…"
+
+  # bash
   BASHRC="${HOME}/.bashrc"
   touch "$BASHRC"
-  if ! grep -q "fastfetch" "$BASHRC"; then
+  if ! grep -q "fastfetch" "$BASHRC" 2>/dev/null; then
     {
       echo ""
       echo "# ── fastfetch autostart ──"
@@ -65,8 +64,6 @@ if [ "${AUTO:-0}" = "1" ]; then
       echo "fastfetch"
     } >> "$BASHRC"
   fi
-  echo "Autostart enabled in ~/.bashrc"
-fi
 
-echo "OK ✅ Installed to: $CFG_DIR"
-echo "Run: fastfetch"
+echo "[AUTO] Done. Restart Termux."
+fi
