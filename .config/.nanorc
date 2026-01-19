@@ -1,0 +1,27 @@
+## Syntax highlighting rules
+include "/data/data/com.termux/files/usr/share/nano/*.nanorc"
+
+## Editor behavior
+set linenumbers
+set tabsize 2
+set tabstospaces
+set softwrap
+set atblanks
+set indicator
+set mouse
+set zap
+unset boldtext
+
+## Make UI clean
+set nohelp
+set minibar
+
+## Colors (нейтрально и “холодно”)
+set titlecolor white
+set statuscolor brightblack
+set keycolor brightblack
+set functioncolor brightblack
+set numbercolor white
+
+## Выделение (не кислотное)
+set selectedcolor black,white
