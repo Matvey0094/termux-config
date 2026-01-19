@@ -2,7 +2,6 @@
 set -eu
 
 # ──────────────────────────────── UI ────────────────────────────────
-# ANSI colors (safe in Termux)
 ESC="$(printf '\033')"
 RST="${ESC}[0m"
 DIM="${ESC}[2m"
@@ -49,16 +48,19 @@ RAW_BASE="https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}"
 
 REPO_CFG_PATH=".config/fastfetch/config.jsonc"
 REPO_LOGO_PATH=".config/fastfetch/logo.txt"
+REPO_NANORC_PATH=".config/.nanorc"
 
 CFG_DIR="${HOME}/.config/fastfetch"
 CFG_FILE="${CFG_DIR}/config.jsonc"
 LOGO_FILE="${CFG_DIR}/logo.txt"
 
+NANORC_FILE="${HOME}/.nanorc"
+
 TERMUX_DIR="${HOME}/.termux"
 FONT_FILE="${TERMUX_DIR}/font.ttf"
 FONT_URL="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/Inconsolata/InconsolataNerdFontMono-Regular.ttf"
 
-PKGS="termux-tools curl git nano fastfetch"
+PKGS="termux-tools curl git nano nano-syntax-highlighting fastfetch"
 
 # ─────────────────────────────── Banner ───────────────────────────────
 printf "%s\n" "${C_PURP}${BOLD}╔══════════════════════════════════════════════════════════════════════╗${RST}"
@@ -68,13 +70,13 @@ printf "%s%sRepo:%s %s/%s (%s)\n%s" "$DIM" "$C_GRAY" "$RST" "$GH_USER" "$GH_REPO
 
 # ─────────────────────────────── Steps ────────────────────────────────
 
-step "Install required packages"
-info "pkg install: $PKGS"
+step "Install required packages (silent)"
+info "Packages: $PKGS"
 # shellcheck disable=SC2086
 pkg update -y >/dev/null 2>&1 || true
 pkg upgrade -y >/dev/null 2>&1 || true
 # shellcheck disable=SC2086
-pkg install -y $PKGS
+pkg install -y $PKGS >/dev/null 2>&1 || fail "pkg install failed"
 ok "Packages installed"
 
 step "Disable Termux welcome message (MOTD)"
@@ -88,51 +90,50 @@ ok "Welcome message disabled"
 step "Install Nerd Font (Inconsolata Mono)"
 mkdir -p "$TERMUX_DIR"
 backup_if_exists "$FONT_FILE"
-curl -fsSL "$FONT_URL" -o "$FONT_FILE"
+curl -fsSL "$FONT_URL" -o "$FONT_FILE" || fail "Font download failed"
 if have termux-reload-settings; then
   termux-reload-settings >/dev/null 2>&1 || true
 fi
 ok "Font installed to ~/.termux/font.ttf"
 warn "If icons still look like squares: fully close Termux and open again"
 
-step "Setup storage access (/storage/emulated)"
-if have termux-setup-storage; then
-  termux-setup-storage || true
-  ok "Storage setup requested (Android permission may pop up)"
-else
-  warn "termux-setup-storage not found (unexpected), continuing"
-fi
-
 step "Prepare fastfetch config directory"
 mkdir -p "$CFG_DIR"
 ok "Dir ready: $CFG_DIR"
 
-step "Backup existing config/logo (if any)"
+step "Backup existing config/logo/nanorc (if any)"
 backup_if_exists "$CFG_FILE"
 backup_if_exists "$LOGO_FILE"
+backup_if_exists "$NANORC_FILE"
 
-step "Download config & logo from GitHub"
+step "Download config, logo, nanorc from GitHub"
 CFG_URL="${RAW_BASE}/${REPO_CFG_PATH}"
 LOGO_URL="${RAW_BASE}/${REPO_LOGO_PATH}"
+NANORC_URL="${RAW_BASE}/${REPO_NANORC_PATH}"
+
 info "config: $CFG_URL"
-curl -fsSL "$CFG_URL" -o "$CFG_FILE" || fail "404/Download failed for config.jsonc (check repo path/branch)"
+curl -fsSL "$CFG_URL" -o "$CFG_FILE" || fail "Download failed: config.jsonc (check repo path/branch)"
+
 info "logo:   $LOGO_URL"
-curl -fsSL "$LOGO_URL" -o "$LOGO_FILE" || fail "404/Download failed for logo.txt (check repo path/branch)"
-ok "Fastfetch config installed"
+curl -fsSL "$LOGO_URL" -o "$LOGO_FILE" || fail "Download failed: logo.txt (check repo path/branch)"
+
+info "nanorc: $NANORC_URL"
+curl -fsSL "$NANORC_URL" -o "$NANORC_FILE" || fail "Download failed: .nanorc (check repo path/branch)"
+
+ok "Fastfetch + Nano config installed"
 
 step "Test run (non-fatal)"
 if have fastfetch; then
-  fastfetch --show-errors || true
+  fastfetch --show-errors >/dev/null 2>&1 || true
   ok "fastfetch executed"
 else
-  warn "fastfetch not found after install (pkg issue?)"
+  warn "fastfetch not found after install"
 fi
 
 # ─────────────────────────────── Autostart ─────────────────────────────
 if [ "${AUTO:-0}" = "1" ]; then
   printf "\n%s%s[AUTO]%s %s\n" "$C_PURP" "$BOLD" "$RST" "${C_PINK}Enabling autostart…${RST}"
 
-  # Most reliable in Termux: ~/.profile
   PROFILE="${HOME}/.profile"
   touch "$PROFILE"
   if ! grep -q "fastfetch autostart" "$PROFILE" 2>/dev/null; then
@@ -146,7 +147,6 @@ EOF
     ok "Autostart already present in ~/.profile"
   fi
 
-  # Optional: also add to ~/.bashrc if bash is used
   BASHRC="${HOME}/.bashrc"
   touch "$BASHRC"
   if ! grep -q "fastfetch autostart" "$BASHRC" 2>/dev/null; then
@@ -163,5 +163,6 @@ EOF
   warn "Restart Termux to apply autostart"
 fi
 
-printf "\n%s%s✔ DONE%s %s\n" "$C_OK" "$BOLD" "$RST" "${C_GRAY}Config: ${CFG_FILE}${RST}"
+printf "\n%s%s✔ DONE%s %s\n" "$C_OK" "$BOLD" "$RST" "${C_GRAY}Fastfetch: ${CFG_FILE}${RST}"
+printf "%s\n" "${DIM}Nano: ${NANORC_FILE}${RST}"
 printf "%s\n" "${DIM}Run: fastfetch${RST}"
