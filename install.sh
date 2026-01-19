@@ -100,11 +100,14 @@ if ! grep -q "termux aliases" "$ZSHRC" 2>/dev/null; then
 alias cat='bat'
 alias ls='eza -lah --icons --group-directories-first --git --no-time'
 alias la='eza -lah --icons --group-directories-first --git --time-style=long-iso'
+
+# ── colors ──
+export LS_COLORS="$(vivid generate zenburn)"
+export EZA_COLORS="da=38;5;205:hd=38;5;141:sn=38;5;110:uu=38;5;250:gu=38;5;250"
 EOF
-  ok "Aliases added to ~/.zshrc"
-else
-  ok "Aliases already present in ~/.zshrc"
-fi
+
+ok "Updated ~/.zshrc"
+warn "Open a new Termux session (or run: source ~/.zshrc)"
 
 step "Disable Termux welcome message (MOTD)"
 touch "${HOME}/.hushlogin"
