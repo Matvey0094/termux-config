@@ -9,7 +9,7 @@
   /* ──────────────────────────────── Logo ──────────────────────────────── */
   "logo": {
     "type": "file",
-    "source": "/data/data/com.termux/files/home/.config/fastfetch/cat.txt",
+    "source": "/data/data/com.termux/files/home/.config/fastfetch/logo.txt",
     "padding": { "right": 4 },
     "color": { "1": "#7226FF" }
   },
