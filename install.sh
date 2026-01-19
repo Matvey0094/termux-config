@@ -60,7 +60,7 @@ TERMUX_DIR="${HOME}/.termux"
 FONT_FILE="${TERMUX_DIR}/font.ttf"
 FONT_URL="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/Inconsolata/InconsolataNerdFontMono-Regular.ttf"
 
-PKGS="curl git nano fastfetch zsh wget bat eza vivid nala"
+PKGS="curl git nano fastfetch zsh wget bat eza vivid"
 
 # ─────────────────────────────── Banner ───────────────────────────────
 printf "%s\n" "${C_PURP}${BOLD}╔══════════════════════════════════════════════════════════════════════╗${RST}"
@@ -100,7 +100,6 @@ if ! grep -q "termux aliases" "$ZSHRC" 2>/dev/null; then
 alias cat='bat'
 alias ls='eza -lah --icons --group-directories-first --git --no-time'
 alias la='eza -lah --icons --group-directories-first --git --time-style=long-iso'
-alias apt='nala'
 EOF
   ok "Aliases added to ~/.zshrc"
 else
