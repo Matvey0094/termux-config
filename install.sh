@@ -60,7 +60,7 @@ TERMUX_DIR="${HOME}/.termux"
 FONT_FILE="${TERMUX_DIR}/font.ttf"
 FONT_URL="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/Inconsolata/InconsolataNerdFontMono-Regular.ttf"
 
-PKGS="curl git nano fastfetch zsh"
+PKGS="curl git nano fastfetch zsh wget bat eza"
 
 # ─────────────────────────────── Banner ───────────────────────────────
 printf "%s\n" "${C_PURP}${BOLD}╔══════════════════════════════════════════════════════════════════════╗${RST}"
@@ -78,6 +78,32 @@ pkg upgrade -y >/dev/null 2>&1 || true
 # shellcheck disable=SC2086
 pkg install -y $PKGS >/dev/null 2>&1 || fail "pkg install failed"
 ok "Packages installed"
+
+step "Set zsh as default + add aliases"
+ZSH_PATH="${PREFIX}/bin/zsh"
+
+# 1) Set default shell via chsh (no fallback)
+if have chsh && [ -x "$ZSH_PATH" ]; then
+  chsh -s "$ZSH_PATH" >/dev/null 2>&1 || fail "chsh failed to set zsh as default shell"
+  ok "Default shell set to zsh"
+else
+  fail "Cannot set default shell: chsh not found or zsh missing"
+fi
+
+# 2) Add aliases for zsh
+ZSHRC="${HOME}/.zshrc"
+touch "$ZSHRC"
+if ! grep -q "termux aliases" "$ZSHRC" 2>/dev/null; then
+  cat >> "$ZSHRC" <<'EOF'
+
+# ── termux aliases ──
+alias cat='bat'
+alias ls='eza'
+EOF
+  ok "Aliases added to ~/.zshrc (cat->bat, ls->eza)"
+else
+  ok "Aliases already present in ~/.zshrc"
+fi
 
 step "Disable Termux welcome message (MOTD)"
 touch "${HOME}/.hushlogin"
