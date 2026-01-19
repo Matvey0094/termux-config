@@ -15,14 +15,15 @@ C_OK="${ESC}[38;5;82m"
 C_WARN="${ESC}[38;5;220m"
 C_BAD="${ESC}[38;5;196m"
 
-tag()  { printf "%s[%s%s%s]%s " "$DIM" "$BOLD" "$1" "$DIM" "$RST"; }
-info() { tag "${C_CYAN}INFO"; printf "%s\n" "$*"; }
-ok()   { tag "${C_OK} OK ";  printf "%s\n" "$*"; }
-warn() { tag "${C_WARN}WARN";printf "%s\n" "$*"; }
-fail() { tag "${C_BAD}FAIL"; printf "%s\n" "$*"; exit 1; }
+# Colorized bracketed tag: [OK], [INFO] etc. Brackets are colored too.
+tag()  { printf "%s%s[%s%s%s]%s " "$BOLD" "$1" "$RST" "$BOLD" "$1" "$RST" "$RST"; }
+info() { tag "$C_CYAN"; printf "%sINFO%s %s\n" "$BOLD" "$RST" "$*"; }
+ok()   { tag "$C_OK";   printf "%s OK %s %s\n" "$BOLD" "$RST" "$*"; }
+warn() { tag "$C_WARN"; printf "%sWARN%s %s\n" "$BOLD" "$RST" "$*"; }
+fail() { tag "$C_BAD";  printf "%sFAIL%s %s\n" "$BOLD" "$RST" "$*"; exit 1; }
 
 step_i=0
-STEP_TOTAL=8
+STEP_TOTAL=10
 step() {
   step_i=$((step_i + 1))
   printf "\n%s%s[%d/%d]%s %s%s%s\n" \
@@ -31,12 +32,71 @@ step() {
 }
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# Prompt helper (works in sh). Default = second arg (y/n).
+ask_yn() {
+  prompt="$1"
+  def="${2:-y}"
+  while :; do
+    if [ "$def" = "y" ]; then
+      printf "%s%s?%s %s [Y/n]: %s" "$C_PURP" "$BOLD" "$RST" "$prompt" "$RST"
+    else
+      printf "%s%s?%s %s [y/N]: %s" "$C_PURP" "$BOLD" "$RST" "$prompt" "$RST"
+    fi
+    IFS= read -r ans || ans=""
+    [ -n "$ans" ] || ans="$def"
+    case "$ans" in
+      y|Y) return 0 ;;
+      n|N) return 1 ;;
+    esac
+  done
+}
+
 backup_if_exists() {
   f="$1"
   [ -f "$f" ] || return 0
+  [ "${DO_BACKUP:-0}" = "1" ] || { warn "Backup disabled: $f"; return 0; }
   ts="$(date +%Y%m%d-%H%M%S)"
   cp -f "$f" "${f}.bak-${ts}" || true
   ok "Backup: ${f}.bak-${ts}"
+}
+
+# Check if a Termux package is installed
+pkg_installed() {
+  pkg_name="$1"
+  dpkg -s "$pkg_name" >/dev/null 2>&1
+}
+
+# Install only missing packages, optionally update/upgrade first
+install_pkgs() {
+  missing=""
+  for p in $PKGS; do
+    if pkg_installed "$p"; then
+      :
+    else
+      missing="$missing $p"
+    fi
+  done
+
+  if [ -z "${missing# }" ] && [ -z "$missing" ]; then
+    ok "All packages already installed"
+    return 0
+  fi
+
+  warn "Missing packages:${missing}"
+  if [ "${DO_UPGRADE:-0}" = "1" ]; then
+    info "Updating repositories (silent)…"
+    pkg update -y >/dev/null 2>&1 || true
+    info "Upgrading installed packages (silent)…"
+    pkg upgrade -y >/dev/null 2>&1 || true
+  else
+    warn "Skipping pkg update/upgrade"
+  fi
+
+  info "Installing missing packages (silent)…"
+  # shellcheck disable=SC2086
+  pkg install -y $missing >/dev/null 2>&1 || fail "pkg install failed"
+  ok "Missing packages installed"
 }
 
 # ─────────────────────────────── Settings ───────────────────────────────
@@ -53,7 +113,6 @@ REPO_NANORC_PATH=".config/.nanorc"
 CFG_DIR="${HOME}/.config/fastfetch"
 CFG_FILE="${CFG_DIR}/config.jsonc"
 LOGO_FILE="${CFG_DIR}/logo.txt"
-
 NANORC_FILE="${HOME}/.nanorc"
 
 TERMUX_DIR="${HOME}/.termux"
@@ -68,46 +127,54 @@ printf "%s\n" "${C_PURP}${BOLD}║        fastfetch / Termux — one-shot instal
 printf "%s\n" "${C_PURP}${BOLD}╚══════════════════════════════════════════════════════════════════════╝${RST}"
 printf "%s%sRepo:%s %s/%s (%s)\n%s" "$DIM" "$C_GRAY" "$RST" "$GH_USER" "$GH_REPO" "$GH_BRANCH" "$RST"
 
+# ─────────────────────────────── Questions ──────────────────────────────
+step "Installer options"
+if ask_yn "Create backups of existing files before overwriting?" "y"; then
+  DO_BACKUP=1; ok "Backups: enabled"
+else
+  DO_BACKUP=0; warn "Backups: disabled"
+fi
+
+if ask_yn "Run pkg update/upgrade? (recommended sometimes, slower)" "n"; then
+  DO_UPGRADE=1; ok "System update: enabled"
+else
+  DO_UPGRADE=0; warn "System update: disabled"
+fi
+
 # ─────────────────────────────── Steps ────────────────────────────────
 
-step "Install required packages (silent)"
-info "Packages: $PKGS"
-# shellcheck disable=SC2086
-pkg update -y >/dev/null 2>&1 || true
-pkg upgrade -y >/dev/null 2>&1 || true
-# shellcheck disable=SC2086
-pkg install -y $PKGS >/dev/null 2>&1 || fail "pkg install failed"
-ok "Packages installed"
+step "Install required packages (only missing, silent)"
+info "Packages wanted: $PKGS"
+install_pkgs
 
 step "Set zsh as default (Termux)"
 ZSH_PATH="${PREFIX}/bin/zsh"
-
 [ -x "$ZSH_PATH" ] || fail "zsh not found at: $ZSH_PATH"
-
 mkdir -p "${HOME}/.termux"
 ln -sf "$ZSH_PATH" "${HOME}/.termux/shell" || fail "Failed to set ~/.termux/shell"
-
 ok "Default shell set to zsh for new Termux sessions"
 warn "Close ALL Termux sessions and reopen the app to apply"
 
-# 2) Add aliases for zsh
+step "Configure zsh (aliases + colors)"
 ZSHRC="${HOME}/.zshrc"
 touch "$ZSHRC"
-if ! grep -q "termux aliases" "$ZSHRC" 2>/dev/null; then
-  cat >> "$ZSHRC" <<'EOF'
 
-# ────── aliases ──────
+cat >> "$ZSHRC" <<'EOF'
+
+# ── termux managed start ──
+# aliases
 alias cat='bat'
 alias ls='eza -lah --icons --group-directories-first --git --no-time'
 alias la='eza -lah --icons --group-directories-first --git --time-style=long-iso'
 
-# ── colors ──
+# colors
 export LS_COLORS="$(vivid generate zenburn)"
 export EZA_COLORS="da=38;5;205:hd=38;5;141:sn=38;5;110:uu=38;5;250:gu=38;5;250"
+# ── termux managed end ──
 EOF
 
 ok "Updated ~/.zshrc"
-warn "Open a new Termux session (or run: source ~/.zshrc)"
+warn "Apply now: source ~/.zshrc"
 
 step "Disable Termux welcome message (MOTD)"
 touch "${HOME}/.hushlogin"
@@ -131,7 +198,7 @@ step "Prepare fastfetch config directory"
 mkdir -p "$CFG_DIR"
 ok "Dir ready: $CFG_DIR"
 
-step "Backup existing config/logo/nanorc (if any)"
+step "Backup existing config/logo/nanorc (optional)"
 backup_if_exists "$CFG_FILE"
 backup_if_exists "$LOGO_FILE"
 backup_if_exists "$NANORC_FILE"
@@ -162,8 +229,7 @@ fi
 
 # ─────────────────────────────── Autostart ─────────────────────────────
 if [ "${AUTO:-0}" = "1" ]; then
-  printf "\n%s%s[AUTO]%s %s\n" "$C_PURP" "$BOLD" "$RST" "${C_PINK}Enabling autostart…${RST}"
-
+  step "Enable fastfetch autostart"
   PROFILE="${HOME}/.profile"
   touch "$PROFILE"
   if ! grep -q "fastfetch autostart" "$PROFILE" 2>/dev/null; then
@@ -176,21 +242,6 @@ EOF
   else
     ok "Autostart already present in ~/.profile"
   fi
-
-  BASHRC="${HOME}/.bashrc"
-  touch "$BASHRC"
-  if ! grep -q "fastfetch autostart" "$BASHRC" 2>/dev/null; then
-    cat >> "$BASHRC" <<'EOF'
-
-# ── fastfetch autostart ──
-[ -t 1 ] && command -v fastfetch >/dev/null 2>&1 && { clear; fastfetch; }
-EOF
-    ok "Added autostart to ~/.bashrc"
-  else
-    ok "Autostart already present in ~/.bashrc"
-  fi
-
-  warn "Restart Termux to apply autostart"
 fi
 
 printf "\n%s%s✔ DONE%s %s\n" "$C_OK" "$BOLD" "$RST" "${C_GRAY}Fastfetch: ${CFG_FILE}${RST}"
