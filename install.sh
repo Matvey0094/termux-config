@@ -1,105 +1,168 @@
 #!/data/data/com.termux/files/usr/bin/sh
 set -eu
 
-# ╔══════════════════════════════════════════════════════════════════════╗
-# ║ fastfetch / Termux — one-shot installer                               ║
-# ╚══════════════════════════════════════════════════════════════════════╝
+# ──────────────────────────────── UI ────────────────────────────────
+ESC="$(printf '\033')"
+RST="${ESC}[0m"
+DIM="${ESC}[2m"
+BOLD="${ESC}[1m"
 
-# === GitHub repo settings (EDIT ME) ======================================
+C_CYAN="${ESC}[38;5;51m"
+C_PURP="${ESC}[38;5;141m"
+C_PINK="${ESC}[38;5;205m"
+C_GRAY="${ESC}[38;5;245m"
+C_OK="${ESC}[38;5;82m"
+C_WARN="${ESC}[38;5;220m"
+C_BAD="${ESC}[38;5;196m"
+
+tag()  { printf "%s[%s%s%s]%s " "$DIM" "$BOLD" "$1" "$DIM" "$RST"; }
+info() { tag "${C_CYAN}INFO"; printf "%s\n" "$*"; }
+ok()   { tag "${C_OK} OK ";  printf "%s\n" "$*"; }
+warn() { tag "${C_WARN}WARN";printf "%s\n" "$*"; }
+fail() { tag "${C_BAD}FAIL"; printf "%s\n" "$*"; exit 1; }
+
+step_i=0
+STEP_TOTAL=8
+step() {
+  step_i=$((step_i + 1))
+  printf "\n%s%s[%d/%d]%s %s%s%s\n" \
+    "$C_PURP" "$BOLD" "$step_i" "$STEP_TOTAL" "$RST" \
+    "$C_PINK" "$1" "$RST"
+}
+
+have() { command -v "$1" >/dev/null 2>&1; }
+backup_if_exists() {
+  f="$1"
+  [ -f "$f" ] || return 0
+  ts="$(date +%Y%m%d-%H%M%S)"
+  cp -f "$f" "${f}.bak-${ts}" || true
+  ok "Backup: ${f}.bak-${ts}"
+}
+
+# ─────────────────────────────── Settings ───────────────────────────────
 GH_USER="Matvey0094"
 GH_REPO="termux-config"
-GH_BRANCH="main"
+GH_BRANCH="dev"
 
 RAW_BASE="https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}"
 
-# Repo file layout (you keep files in repo under .config/fastfetch/)
 REPO_CFG_PATH=".config/fastfetch/config.jsonc"
 REPO_LOGO_PATH=".config/fastfetch/logo.txt"
+REPO_NANORC_PATH=".config/.nanorc"
 
 CFG_DIR="${HOME}/.config/fastfetch"
 CFG_FILE="${CFG_DIR}/config.jsonc"
 LOGO_FILE="${CFG_DIR}/logo.txt"
 
-PKGS="curl git nano fastfetch"
+NANORC_FILE="${HOME}/.nanorc"
 
-have() { command -v "$1" >/dev/null 2>&1; }
+TERMUX_DIR="${HOME}/.termux"
+FONT_FILE="${TERMUX_DIR}/font.ttf"
+FONT_URL="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/Inconsolata/InconsolataNerdFontMono-Regular.ttf"
 
-echo "[1/8] Installing required packages…"
+PKGS="termux-tools curl git nano nano-syntax-highlighting fastfetch"
+
+# ─────────────────────────────── Banner ───────────────────────────────
+printf "%s\n" "${C_PURP}${BOLD}╔══════════════════════════════════════════════════════════════════════╗${RST}"
+printf "%s\n" "${C_PURP}${BOLD}║        fastfetch / Termux — one-shot installer (cyber edition)       ║${RST}"
+printf "%s\n" "${C_PURP}${BOLD}╚══════════════════════════════════════════════════════════════════════╝${RST}"
+printf "%s%sRepo:%s %s/%s (%s)\n%s" "$DIM" "$C_GRAY" "$RST" "$GH_USER" "$GH_REPO" "$GH_BRANCH" "$RST"
+
+# ─────────────────────────────── Steps ────────────────────────────────
+
+step "Install required packages (silent)"
+info "Packages: $PKGS"
 # shellcheck disable=SC2086
-pkg install -y $PKGS
+pkg update -y >/dev/null 2>&1 || true
+pkg upgrade -y >/dev/null 2>&1 || true
+# shellcheck disable=SC2086
+pkg install -y $PKGS >/dev/null 2>&1 || fail "pkg install failed"
+ok "Packages installed"
 
-echo "[2/8] Disabling Termux welcome message…"
-
-# Disable login/welcome messages for this user
+step "Disable Termux welcome message (MOTD)"
 touch "${HOME}/.hushlogin"
-
-# Also clear Termux MOTD if it exists (safe to ignore if not present)
 MOTD_USR="${PREFIX}/etc/motd"
 MOTD_TERMUX="${PREFIX}/etc/motd.sh"
 [ -f "$MOTD_USR" ] && : > "$MOTD_USR" || true
 [ -f "$MOTD_TERMUX" ] && : > "$MOTD_TERMUX" || true
+ok "Welcome message disabled"
 
-echo "[MOTD] Done."
-
-echo "[3/8] Installing Inconsolata Nerd Font Mono…"
-
-TERMUX_DIR="${HOME}/.termux"
-FONT_FILE="${TERMUX_DIR}/font.ttf"
+step "Install Nerd Font (Inconsolata Mono)"
 mkdir -p "$TERMUX_DIR"
-
-REG_URL="https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/Inconsolata/InconsolataNerdFontMono-Regular.ttf"
-
-# backup existing font
-if [ -f "$FONT_FILE" ]; then
-  ts="$(date +%Y%m%d-%H%M%S)"
-  cp -f "$FONT_FILE" "${FONT_FILE}.bak-${ts}" || true
+backup_if_exists "$FONT_FILE"
+curl -fsSL "$FONT_URL" -o "$FONT_FILE" || fail "Font download failed"
+if have termux-reload-settings; then
+  termux-reload-settings >/dev/null 2>&1 || true
 fi
+ok "Font installed to ~/.termux/font.ttf"
+warn "If icons still look like squares: fully close Termux and open again"
 
-curl -fsSL "$REG_URL" -o "$FONT_FILE"
-
-# apply (Termux)
-if command -v termux-reload-settings >/dev/null 2>&1; then
-  termux-reload-settings || true
-fi
-
-echo "[FONT] Done. If you don't see changes: fully restart Termux."
-
-echo "[4/8] Setting up storage access…"
-# this will ask Android permission (safe to re-run)
-if have termux-setup-storage; then
-  termux-setup-storage || true
-fi
-
-echo "[5/8] Preparing config directory…"
+step "Prepare fastfetch config directory"
 mkdir -p "$CFG_DIR"
+ok "Dir ready: $CFG_DIR"
 
-echo "[6/8] Backing up existing files (if any)…"
-ts="$(date +%Y%m%d-%H%M%S)"
-[ -f "$CFG_FILE" ] && cp -f "$CFG_FILE" "${CFG_FILE}.bak-${ts}"
-[ -f "$LOGO_FILE" ] && cp -f "$LOGO_FILE" "${LOGO_FILE}.bak-${ts}"
+step "Backup existing config/logo/nanorc (if any)"
+backup_if_exists "$CFG_FILE"
+backup_if_exists "$LOGO_FILE"
+backup_if_exists "$NANORC_FILE"
 
-echo "[7/8] Downloading config & logo from GitHub…"
-curl -fsSL "${RAW_BASE}/${REPO_CFG_PATH}" -o "$CFG_FILE"
-curl -fsSL "${RAW_BASE}/${REPO_LOGO_PATH}" -o "$LOGO_FILE"
+step "Download config, logo, nanorc from GitHub"
+CFG_URL="${RAW_BASE}/${REPO_CFG_PATH}"
+LOGO_URL="${RAW_BASE}/${REPO_LOGO_PATH}"
+NANORC_URL="${RAW_BASE}/${REPO_NANORC_PATH}"
 
-echo "[8/8] Test run…"
-fastfetch || true
+info "config: $CFG_URL"
+curl -fsSL "$CFG_URL" -o "$CFG_FILE" || fail "Download failed: config.jsonc (check repo path/branch)"
 
-# ===== Autostart (AUTO=1) ===============================================
+info "logo:   $LOGO_URL"
+curl -fsSL "$LOGO_URL" -o "$LOGO_FILE" || fail "Download failed: logo.txt (check repo path/branch)"
+
+info "nanorc: $NANORC_URL"
+curl -fsSL "$NANORC_URL" -o "$NANORC_FILE" || fail "Download failed: .nanorc (check repo path/branch)"
+
+ok "Fastfetch + Nano config installed"
+
+step "Test run (non-fatal)"
+if have fastfetch; then
+  fastfetch --show-errors >/dev/null 2>&1 || true
+  ok "fastfetch executed"
+else
+  warn "fastfetch not found after install"
+fi
+
+# ─────────────────────────────── Autostart ─────────────────────────────
 if [ "${AUTO:-0}" = "1" ]; then
-  echo "[AUTO] Enabling autostart…"
+  printf "\n%s%s[AUTO]%s %s\n" "$C_PURP" "$BOLD" "$RST" "${C_PINK}Enabling autostart…${RST}"
 
-  # bash
-  BASHRC="${HOME}/.bashrc"
-  touch "$BASHRC"
-  if ! grep -q "fastfetch" "$BASHRC" 2>/dev/null; then
-    {
-      echo ""
-      echo "# ── fastfetch autostart ──"
-      echo "clear"
-      echo "fastfetch"
-    } >> "$BASHRC"
+  PROFILE="${HOME}/.profile"
+  touch "$PROFILE"
+  if ! grep -q "fastfetch autostart" "$PROFILE" 2>/dev/null; then
+    cat >> "$PROFILE" <<'EOF'
+
+# ── fastfetch autostart ──
+[ -t 1 ] && command -v fastfetch >/dev/null 2>&1 && { clear; fastfetch; }
+EOF
+    ok "Added autostart to ~/.profile"
+  else
+    ok "Autostart already present in ~/.profile"
   fi
 
-echo "[AUTO] Done. Restart Termux."
+  BASHRC="${HOME}/.bashrc"
+  touch "$BASHRC"
+  if ! grep -q "fastfetch autostart" "$BASHRC" 2>/dev/null; then
+    cat >> "$BASHRC" <<'EOF'
+
+# ── fastfetch autostart ──
+[ -t 1 ] && command -v fastfetch >/dev/null 2>&1 && { clear; fastfetch; }
+EOF
+    ok "Added autostart to ~/.bashrc"
+  else
+    ok "Autostart already present in ~/.bashrc"
+  fi
+
+  warn "Restart Termux to apply autostart"
 fi
+
+printf "\n%s%s✔ DONE%s %s\n" "$C_OK" "$BOLD" "$RST" "${C_GRAY}Fastfetch: ${CFG_FILE}${RST}"
+printf "%s\n" "${DIM}Nano: ${NANORC_FILE}${RST}"
+printf "%s\n" "${DIM}Run: fastfetch${RST}"
