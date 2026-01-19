@@ -42,7 +42,7 @@ backup_if_exists() {
 # ─────────────────────────────── Settings ───────────────────────────────
 GH_USER="Matvey0094"
 GH_REPO="termux-config"
-GH_BRANCH="dev"
+GH_BRANCH="main"
 
 RAW_BASE="https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}"
 
