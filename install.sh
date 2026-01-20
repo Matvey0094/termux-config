@@ -28,6 +28,13 @@ fail() { tag "$C_BAD"  "FAIL"; printf "%s\n" "$*"; exit 1; }
 
 hr() { printf "%s%s%s\n" "$C_PURP" "$1" "$RST"; }
 
+# cursor helpers
+CSI="${ESC}["
+hide_cursor(){ printf "%s?25l" "$CSI"; }
+show_cursor(){ printf "%s?25h" "$CSI"; }
+move_to()   { printf "%s%s;%sH" "$CSI" "$1" "$2"; }   # row col (1-based)
+clear_down(){ printf "%sJ" "$CSI"; }                  # clear from cursor down
+
 # ──────────────────────────────── SETTINGS ────────────────────────────────
 GH_USER="${GH_USER:-Matvey0094}"
 GH_REPO="${GH_REPO:-termux-config}"
@@ -198,9 +205,8 @@ draw_menu() {
 # read single key (works in Termux)
 read_key() {
   oldstty="$(stty -g)"
-  stty -echo -icanon time 0 min 1 2>/dev/null || true
+  stty -echo -icanon min 1 time 0 2>/dev/null || true
   k="$(dd bs=1 count=1 2>/dev/null || true)"
-  # if it's ESC, read 2 more bytes for arrows
   if [ "$k" = "$(printf '\033')" ]; then
     k2="$(dd bs=1 count=2 2>/dev/null || true)"
     k="$k$k2"
@@ -209,19 +215,42 @@ read_key() {
   printf "%s" "$k"
 }
 
-menu_ui() {
-  while :; do
-    clear
-    draw_logo
-    draw_menu
+# returns current cursor row via ANSI query (works in Termux usually)
+get_row() {
+  oldstty="$(stty -g)"
+  stty -echo -icanon min 0 time 1 2>/dev/null || true
+  printf "%s6n" "$CSI" > /dev/tty 2>/dev/null || true
+  resp="$(dd bs=32 count=1 2>/dev/null || true)"
+  stty "$oldstty" 2>/dev/null || true
+  # resp like: ESC[ROW;COLR  -> extract ROW
+  printf "%s" "$resp" | sed -n 's/.*\[\([0-9][0-9]*\);.*/\1/p'
+}
 
+menu_ui() {
+  clear
+  hide_cursor
+  trap 'show_cursor; printf "%s\n" "$RST"; exit 0' INT TERM
+
+  draw_logo
+
+  # запоминаем строку, где начнем рисовать меню (после лого)
+  # если query не сработал — fallback на 10 (обычно хватит)
+  MENU_ROW="$(get_row)"
+  [ -z "$MENU_ROW" ] && MENU_ROW=10
+
+  # первый рендер меню
+  move_to "$MENU_ROW" 1
+  clear_down
+  draw_menu
+
+  while :; do
     key="$(read_key)"
 
     case "$key" in
-      q) return 2 ;;                           # quit
-      "$(printf '\033[A')") CUR=$((CUR - 1)) ;; # up
-      "$(printf '\033[B')") CUR=$((CUR + 1)) ;; # down
-      " ") # toggle
+      q) show_cursor; return 2 ;;
+      "$(printf '\033[A')") CUR=$((CUR - 1)) ;;
+      "$(printf '\033[B')") CUR=$((CUR + 1)) ;;
+      " ")
         case "$(get_key "$CUR")" in
           DO_BACKUP)    DO_BACKUP=$((1-DO_BACKUP)) ;;
           DO_UPDATE)    DO_UPDATE=$((1-DO_UPDATE)) ;;
@@ -230,13 +259,18 @@ menu_ui() {
         esac
         ;;
       "$(printf '\n')"|"\r")
-        [ "$(get_key "$CUR")" = "START" ] && return 0
+        [ "$(get_key "$CUR")" = "START" ] && { show_cursor; return 0; }
         ;;
     esac
 
     n="$(items_count)"
     [ "$CUR" -lt 0 ] && CUR=0
     [ "$CUR" -ge "$n" ] && CUR=$((n-1))
+
+    # обновляем только меню-область
+    move_to "$MENU_ROW" 1
+    clear_down
+    draw_menu
   done
 }
 
