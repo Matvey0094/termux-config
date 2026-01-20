@@ -1,27 +1,52 @@
-## Syntax highlighting rules
-include "/data/data/com.termux/files/usr/share/nano/*.nanorc"
 
-## Editor behavior
-set linenumbers
-set tabsize 2
-set tabstospaces
-set softwrap
-set atblanks
-set indicator
-set mouse
-set zap
-unset boldtext
+## ─────────────────────────────────────────────────────────────
+##  nano — приятный дефолт (Termux-friendly)
+##  путь: ~/.config/nano/nanorc  (или ~/.nanorc)
+## ─────────────────────────────────────────────────────────────
 
-## Make UI clean
+## --- поведение / удобство ---
 set nohelp
-set minibar
+set softwrap              ## перенос строк по экрану (без вставки \n)
+set atblanks              ## переносить по пробелам/табам (мягче читается)
+set indicator             ## "скроллбар" справа
+set linenumbers           ## номера строк слева
+set constantshow          ## всегда показывать позицию курсора
+set minibar               ## компактная строка статуса (очень удобно в терминале)
+set stateflags            ## флаги режимов (I/M/L/R/S) в интерфейсе
+set smarthome             ## Home прыгает к первому не-пробелу, повтор — в начало
+set historylog            ## история поисков/команд
+set positionlog           ## запоминать позицию курсора (и якоря) между сессиями
+set mouse                 ## мышь (в Termux обычно ок)
 
-## Colors (нейтрально и “холодно”)
-set titlecolor white
-set statuscolor brightblack
-set keycolor brightblack
-set functioncolor brightblack
-set numbercolor white
+## --- отступы ---
+set tabsize 4             ## таб = 4 колонки (можешь поставить 2)
+set tabstospaces          ## таб превращаем в пробелы (для кода почти всегда лучше)
+set autoindent            ## авто-отступ по предыдущей строке
 
-## Выделение (не кислотное)
-set selectedcolor black,white
+## --- визуальные подсказки ---
+set guidestripe 80        ## вертикальная линия на 80 колонке
+set trimblanks            ## подрезать хвостовые пробелы при переносе/выравнивании
+
+## Показывать пробел/таб (символы должны быть "одноколоночными")
+## По умолчанию nano сам подберёт, но эти обычно приятны:
+set whitespace "»·"
+
+## ── calm palette for dark Termux (фон = normal) ──
+set titlecolor      bold,slate,normal
+set promptcolor     bold,teal,normal
+set statuscolor     normal,normal
+
+set numbercolor     slate,normal
+set scrollercolor   slate,normal
+set stripecolor     brown,normal
+
+## выделение: мягкая “бумага” без неона
+set selectedcolor   black,latte
+set spotlightcolor  black,sand
+
+## подсказки внизу/клавиши (если help включён) — приглушённо
+set keycolor        slate,normal
+set functioncolor   slate,normal
+
+## ошибки: заметно, но не выжигает
+set errorcolor      bold,white,brick
