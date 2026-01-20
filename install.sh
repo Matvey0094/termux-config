@@ -131,15 +131,14 @@ cols() { tput cols 2>/dev/null || printf "80"; }
 center_grad() {
   colored="$1"
   plain="$2"
-  w="$(cols)"
-  len="${#plain}"
+  w="$(tput cols 2>/dev/null || printf 80)"
+  len=${#plain}
   pad=$(( (w - len) / 2 ))
   [ "$pad" -lt 0 ] && pad=0
-  printf "%*s%b%s\n" "$pad" "" "$colored" "$RST"
+  printf "%*s%s\n" "$pad" "" "$colored"
 }
 
 draw_logo() {
-  printf '\033[?7l'
   printf "\n"
 
   # Synthex (ASCII), по центру. Можно покрасить градиентом построчно:
@@ -153,7 +152,6 @@ draw_logo() {
   center_grad "${G8}${BOLD}          ▀▀▀                               ${RST}" "          ▀▀▀                               "
 
   printf "\n"
-  printf '\033[?7h'
 }
 
 # Menu state
