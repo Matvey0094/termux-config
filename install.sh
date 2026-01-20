@@ -139,6 +139,7 @@ center_grad() {
 }
 
 draw_logo() {
+  printf '\033[?7l'
   printf "\n"
 
   # Synthex (ASCII), по центру. Можно покрасить градиентом построчно:
@@ -152,6 +153,7 @@ draw_logo() {
   center_grad "${G8}${BOLD}          ▀▀▀                               ${RST}" "          ▀▀▀                               "
 
   printf "\n"
+  printf '\033[?7h'
 }
 
 # Menu state
