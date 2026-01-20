@@ -162,47 +162,7 @@ items_count() { printf "%s" "$MENU_ITEMS" | awk -F'|' '{print NF}'; }
 
 on_off() { [ "$1" -eq 1 ] && printf "ON" || printf "OFF"; }
 
-draw_menu() {
-  n="$(items_count)"
-  printf "%sChoose:%s\n" "$C_CYAN$BOLD" "$RST"
-
-  i=0
-  while [ "$i" -lt "$n" ]; do
-    label="$(get_item "$i")"
-    key="$(get_key "$i")"
-
-    # Determine state text
-    state=""
-    case "$key" in
-      DO_BACKUP)     state="$(on_off "$DO_BACKUP")" ;;
-      DO_UPDATE)     state="$(on_off "$DO_UPDATE")" ;;
-      DO_AUTOSTART)  state="$(on_off "$DO_AUTOSTART")" ;;
-      DO_APPLY_NOW)  state="$(on_off "$DO_APPLY_NOW")" ;;
-      START)         state="" ;;
-    esac
-
-    # cursor marker + colors
-    if [ "$i" -eq "$CUR" ]; then
-      pointer="${C_PINK}${BOLD}>${RST}"
-      linec="${C_PINK}${BOLD}"
-    else
-      pointer=" "
-      linec="$RST"
-    fi
-
-    if [ "$key" = "START" ]; then
-      printf " %s %s%s%s\n" "$pointer" "$linec" "$label" "$RST"
-    else
-      printf " %s %s%s%s %s[%s]%s\n" "$pointer" "$linec" "$label" "$RST" "$DIM$C_GRAY" "$state" "$RST"
-    fi
-
-    i=$((i + 1))
-  done
-
-  printf "\n%s%s%s\n" "$DIM$C_GRAY" "↕ navigate • Space toggle • Enter submit • q quit" "$RST"
-}
-
-# read single key (works in Termux)
+# ───────── key reader (blocking) ─────────
 read_key() {
   oldstty="$(stty -g)"
   stty -echo -icanon min 1 time 0 2>/dev/null || true
@@ -215,62 +175,128 @@ read_key() {
   printf "%s" "$k"
 }
 
-# returns current cursor row via ANSI query (works in Termux usually)
-get_row() {
-  oldstty="$(stty -g)"
-  stty -echo -icanon min 0 time 1 2>/dev/null || true
-  printf "%s6n" "$CSI" > /dev/tty 2>/dev/null || true
-  resp="$(dd bs=32 count=1 2>/dev/null || true)"
-  stty "$oldstty" 2>/dev/null || true
-  # resp like: ESC[ROW;COLR  -> extract ROW
-  printf "%s" "$resp" | sed -n 's/.*\[\([0-9][0-9]*\);.*/\1/p'
+# ───────── cursor helpers ─────────
+CSI="${ESC}["
+hide_cursor(){ printf "%s?25l" "$CSI"; }
+show_cursor(){ printf "%s?25h" "$CSI"; }
+move_to()   { printf "%s%s;%sH" "$CSI" "$1" "$2"; }  # row col (1-based)
+clr_line()  { printf "%s2K" "$CSI"; }                # clear whole line
+
+# ───────── render one menu line i (0-based) at fixed row ─────────
+# menu_row = first row where "Choose:" is printed
+render_line() {
+  idx="$1"
+  sel="$2"   # 1 if selected, 0 if normal
+  row=$((MENU_ROW + 1 + idx))  # +1 because line 0 is "Choose:"
+  label="$(get_item "$idx")"
+  key="$(get_key "$idx")"
+
+  state=""
+  case "$key" in
+    DO_BACKUP)    state="$(on_off "$DO_BACKUP")" ;;
+    DO_UPDATE)    state="$(on_off "$DO_UPDATE")" ;;
+    DO_AUTOSTART) state="$(on_off "$DO_AUTOSTART")" ;;
+    DO_APPLY_NOW) state="$(on_off "$DO_APPLY_NOW")" ;;
+    START)        state="" ;;
+  esac
+
+  if [ "$sel" -eq 1 ]; then
+    pointer="${C_PINK}${BOLD}>${RST}"
+    linec="${C_PINK}${BOLD}"
+  else
+    pointer=" "
+    linec="$RST"
+  fi
+
+  move_to "$row" 1
+  clr_line
+
+  if [ "$key" = "START" ]; then
+    printf " %s %s%s%s" "$pointer" "$linec" "$label" "$RST"
+  else
+    printf " %s %s%s%s %s[%s]%s" "$pointer" "$linec" "$label" "$RST" "$DIM$C_GRAY" "$state" "$RST"
+  fi
+}
+
+# ───────── draw menu once, then incremental updates ─────────
+draw_menu_once() {
+  # Print header
+  move_to "$MENU_ROW" 1
+  clr_line
+  printf "%sChoose:%s" "$C_CYAN$BOLD" "$RST"
+
+  n="$(items_count)"
+  i=0
+  while [ "$i" -lt "$n" ]; do
+    if [ "$i" -eq "$CUR" ]; then
+      render_line "$i" 1
+    else
+      render_line "$i" 0
+    fi
+    i=$((i + 1))
+  done
+
+  # Footer hint (one line under menu)
+  footer_row=$((MENU_ROW + 1 + n))
+  move_to "$footer_row" 1
+  clr_line
+  printf "%s%s%s" "$DIM$C_GRAY" "↕ navigate • Space toggle • Enter submit • q quit" "$RST"
 }
 
 menu_ui() {
+  # --- render once ---
   clear
   hide_cursor
-  trap 'show_cursor; printf "%s\n" "$RST"; exit 0' INT TERM
+  trap 'show_cursor; printf "%s\n" "$RST"; exit 0' INT TERM EXIT
 
   draw_logo
 
-  # запоминаем строку, где начнем рисовать меню (после лого)
-  # если query не сработал — fallback на 10 (обычно хватит)
-  MENU_ROW="$(get_row)"
-  [ -z "$MENU_ROW" ] && MENU_ROW=10
+  # Where to place menu: directly after logo.
+  # We assume logo uses 8 lines (6 + 2 blanks). Adjust if you change draw_logo.
+  # You can tune this number if needed.
+  MENU_ROW=12
 
-  # первый рендер меню
-  move_to "$MENU_ROW" 1
-  clear_down
-  draw_menu
+  CUR=0
+  draw_menu_once
 
+  # --- incremental update loop ---
+  n="$(items_count)"
   while :; do
     key="$(read_key)"
 
     case "$key" in
       q) show_cursor; return 2 ;;
-      "$(printf '\033[A')") CUR=$((CUR - 1)) ;;
-      "$(printf '\033[B')") CUR=$((CUR + 1)) ;;
-      " ")
+
+      "$(printf '\033[A')")  # up
+        old="$CUR"
+        CUR=$((CUR - 1))
+        [ "$CUR" -lt 0 ] && CUR=$((n - 1))
+        render_line "$old" 0
+        render_line "$CUR" 1
+        ;;
+
+      "$(printf '\033[B')")  # down
+        old="$CUR"
+        CUR=$((CUR + 1))
+        [ "$CUR" -ge "$n" ] && CUR=0
+        render_line "$old" 0
+        render_line "$CUR" 1
+        ;;
+
+      " ") # toggle current option + redraw ONLY current line
         case "$(get_key "$CUR")" in
           DO_BACKUP)    DO_BACKUP=$((1-DO_BACKUP)) ;;
           DO_UPDATE)    DO_UPDATE=$((1-DO_UPDATE)) ;;
           DO_AUTOSTART) DO_AUTOSTART=$((1-DO_AUTOSTART)) ;;
           DO_APPLY_NOW) DO_APPLY_NOW=$((1-DO_APPLY_NOW)) ;;
         esac
+        render_line "$CUR" 1
         ;;
-      "$(printf '\n')"|"\r")
+
+      "$(printf '\n')"|"\r") # enter
         [ "$(get_key "$CUR")" = "START" ] && { show_cursor; return 0; }
         ;;
     esac
-
-    n="$(items_count)"
-    [ "$CUR" -lt 0 ] && CUR=0
-    [ "$CUR" -ge "$n" ] && CUR=$((n-1))
-
-    # обновляем только меню-область
-    move_to "$MENU_ROW" 1
-    clear_down
-    draw_menu
   done
 }
 
