@@ -141,34 +141,15 @@ center_grad() {
 draw_logo() {
   printf "\n"
 
-  # 7 строк "пиксельного" Terraform (TERRAFORM), каждая буква — свой шаг градиента
-  p1="█████ █████ ████  ████  ████  █████  ███   ████  █   █"
-  c1="${G1}${BOLD}█████${RST} ${G2}${BOLD}█████${RST} ${G3}${BOLD}████ ${RST} ${G4}${BOLD}████ ${RST} ${G5}${BOLD} ███ ${RST} ${G6}${BOLD}█████${RST} ${G7}${BOLD} ███ ${RST} ${G8}${BOLD}████ ${RST} ${G9}${BOLD}█   █${RST}"
-  center_grad "$c1" "$p1"
-
-  p2="  █   █     █   █ █   █ █   █ █     █   █ █   █ ██ ██"
-  c2="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█   █${RST} ${G4}${BOLD}█   █${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█   █${RST} ${G9}${BOLD}██ ██${RST}"
-  center_grad "$c2" "$p2"
-
-  p3="  █   █     █   █ █   █ █   █ █     █   █ █   █ █ █ █"
-  c3="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█   █${RST} ${G4}${BOLD}█   █${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█   █${RST} ${G9}${BOLD}█ █ █${RST}"
-  center_grad "$c3" "$p3"
-
-  p4="  █   ████  ████  ████  █████ ████  █   █ ████  █   █"
-  c4="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}████ ${RST} ${G3}${BOLD}████ ${RST} ${G4}${BOLD}████ ${RST} ${G5}${BOLD}█████${RST} ${G6}${BOLD}████ ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}████ ${RST} ${G9}${BOLD}█   █${RST}"
-  center_grad "$c4" "$p4"
-
-  p5="  █   █     █ █   █ █   █   █ █     █   █ █ █   █   █"
-  c5="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█ █  ${RST} ${G4}${BOLD}█ █  ${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█ █  ${RST} ${G9}${BOLD}█   █${RST}"
-  center_grad "$c5" "$p5"
-
-  p6="  █   █     █  █  █  █  █   █ █     █   █ █  █  █   █"
-  c6="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█  █ ${RST} ${G4}${BOLD}█  █ ${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█  █ ${RST} ${G9}${BOLD}█   █${RST}"
-  center_grad "$c6" "$p6"
-
-  p7="  █   █████ █   █ █   █ █   █ █     ███   █   █ █   █"
-  c7="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█████${RST} ${G3}${BOLD}█   █${RST} ${G4}${BOLD}█   █${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD} ███ ${RST} ${G8}${BOLD}█   █${RST} ${G9}${BOLD}█   █${RST}"
-  center_grad "$c7" "$p7"
+  # Synthex (ASCII), по центру. Можно покрасить градиентом построчно:
+  center_grad "${G1}${BOLD}  ▄▄▄▄▄                                    ${RST}" "  ▄▄▄▄▄                                    "
+  center_grad "${G2}${BOLD} ██▀▀▀▀█▄             █▄ █▄                ${RST}" " ██▀▀▀▀█▄             █▄ █▄                "
+  center_grad "${G3}${BOLD} ▀██▄  ▄▀       ▄    ▄██▄██                ${RST}" " ▀██▄  ▄▀       ▄    ▄██▄██                "
+  center_grad "${G4}${BOLD}   ▀██▄▄  ██ ██ ████▄ ██ ████▄ ▄█▀█▄▀██ ██▀${RST}" "   ▀██▄▄  ██ ██ ████▄ ██ ████▄ ▄█▀█▄▀██ ██▀"
+  center_grad "${G5}${BOLD} ▄   ▀██▄ ██▄██ ██ ██ ██ ██ ██ ██▄█▀  ███  ${RST}" " ▄   ▀██▄ ██▄██ ██ ██ ██ ██ ██ ██▄█▀  ███  "
+  center_grad "${G6}${BOLD} ▀██████▀▄▄▀██▀▄██ ▀█▄██▄██ ██▄▀█▄▄▄▄██ ██▄${RST}" " ▀██████▀▄▄▀██▀▄██ ▀█▄██▄██ ██▄▀█▄▄▄▄██ ██▄"
+  center_grad "${G7}${BOLD}            ██                              ${RST}" "            ██                              "
+  center_grad "${G8}${BOLD}          ▀▀▀                               ${RST}" "          ▀▀▀                               "
 
   printf "\n"
 }
