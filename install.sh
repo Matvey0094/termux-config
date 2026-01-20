@@ -175,7 +175,7 @@ on_off() { [ "$1" -eq 1 ] && printf "ON" || printf "OFF"; }
 # ───────── key reader (blocking) ─────────
 read_key() {
   oldstty="$(stty -g)"
-  stty -echo -icanon time 0 min 0 2>/dev/null || true
+  stty -echo -icanon min 1 time 0 2>/dev/null || true
   k="$(dd bs=1 count=1 2>/dev/null || true)"
   if [ "$k" = "$(printf '\033')" ]; then
     k2="$(dd bs=1 count=2 2>/dev/null || true)"
@@ -253,173 +253,60 @@ draw_menu_once() {
   printf "%s%s%s" "$DIM$C_GRAY" "↕ navigate • Space toggle • Enter submit • q quit" "$RST"
 }
 
-# ────────────────────── Screen / UI helpers (no flicker) ──────────────────────
-CSI="$(printf '\033[')"
-
-cols() { tput cols 2>/dev/null || printf "80"; }
-lines(){ tput lines 2>/dev/null || printf "24"; }
-
-# Clear screen + move cursor home (faster & cleaner than `clear`)
-cls() { printf "%s2J%sH" "$CSI" "$CSI"; }
-
-# Clear current line
-clr_line() { printf "%s2K" "$CSI"; }
-
-# Move cursor: row col (0-based like tput cup)
-cup() { tput cup "$1" "$2"; }
-
-hide_cursor() { tput civis 2>/dev/null || true; }
-show_cursor() { tput cnorm 2>/dev/null || true; }
-
-# Safe cleanup (always restore cursor even if Ctrl+C)
-ui_cleanup() {
-  show_cursor
-  stty echo icanon 2>/dev/null || true
-}
-trap ui_cleanup EXIT INT TERM
-
-# ───────────────────────────── Banner (centered) ─────────────────────────────
-# Uses: figlet + lolcat + boxes (optional). Works without them too.
-draw_banner_once() {
-  TITLE="${1:-Synthex}"
-
-  w="$(cols)"
-  tmp="$(mktemp)"
-  : > "$tmp"
-
-  # top padding
-  printf "\n" >>"$tmp"
-
-  # If figlet exists: big title; else: plain title
-  if command -v figlet >/dev/null 2>&1; then
-    # -t uses terminal width; -c center; -w set width (slightly larger helps centering)
-    figlet -c -t -w "$((w + 10))" "$TITLE" >>"$tmp"
-  else
-    # manual centering
-    pad=$(( (w - ${#TITLE}) / 2 )); [ "$pad" -lt 0 ] && pad=0
-    printf "%*s%s\n" "$pad" "" "$TITLE" >>"$tmp"
-  fi
-
-  # Colorize title if lolcat exists (nice gradient)
-  if command -v lolcat >/dev/null 2>&1; then
-    # render colored to temp2 then overwrite tmp
-    tmp2="$(mktemp)"
-    lolcat -f <"$tmp" >"$tmp2" 2>/dev/null || cat "$tmp" >"$tmp2"
-    mv -f "$tmp2" "$tmp"
-  else
-    # fallback: leave as-is (no colors) - стабильнее всего
-    :
-  fi
-
-  # Optional frame around banner (boxes)
-  if command -v boxes >/dev/null 2>&1; then
-    tmp3="$(mktemp)"
-    boxes -a c -d ansi-heavy -s "${w}x10" < /dev/null >"$tmp3" 2>/dev/null || : >"$tmp3"
-    # Put box first, then title block "inside" by positioning later in menu renderer
-    # Here just print title; box we'll draw separately in screen init.
-    rm -f "$tmp3"
-  fi
-
-  cat "$tmp"
-  rm -f "$tmp"
-}
-
-# ───────────────────────────── Menu (fixed region) ───────────────────────────
-# You decide where menu begins (row MENU_TOP). Banner stays untouched.
-MENU_TOP=10          # <- подстрой, чтобы меню было под баннером
-MENU_LEFT=2          # <- левый отступ меню
-MENU_WIDTH=60
-
-# Draw static hint line once
-draw_menu_hint() {
-  cup $((MENU_TOP + 7)) "$MENU_LEFT"
-  clr_line
-  printf "%s%s↕ navigate • Space toggle • Enter submit • q quit%s" "$DIM" "$C_GRAY" "$RST"
-}
-
-# Draw menu items in-place (no clear screen)
-draw_menu_in_place() {
-  n="$(items_count)"
-
-  # Header
-  cup "$MENU_TOP" "$MENU_LEFT"
-  clr_line
-  printf "%s%sChoose:%s" "$C_CYAN" "$BOLD" "$RST"
-
-  i=0
-  while [ "$i" -lt "$n" ]; do
-    label="$(get_item "$i")"
-    key="$(get_key "$i")"
-
-    state=""
-    case "$key" in
-      DO_BACKUP)     state="$(on_off "$DO_BACKUP")" ;;
-      DO_UPDATE)     state="$(on_off "$DO_UPDATE")" ;;
-      DO_AUTOSTART)  state="$(on_off "$DO_AUTOSTART")" ;;
-      DO_APPLY_NOW)  state="$(on_off "$DO_APPLY_NOW")" ;;
-      START)         state="" ;;
-    esac
-
-    if [ "$i" -eq "$CUR" ]; then
-      pointer="${C_PINK}${BOLD}>${RST}"
-      linec="${C_PINK}${BOLD}"
-    else
-      pointer=" "
-      linec="$RST"
-    fi
-
-    cup $((MENU_TOP + 1 + i)) "$MENU_LEFT"
-    clr_line
-    if [ "$key" = "START" ]; then
-      printf "%s %s%s%s" "$pointer" "$linec" "$label" "$RST"
-    else
-      printf "%s %s%s%s %s[%s]%s" "$pointer" "$linec" "$label" "$RST" "$DIM$C_GRAY" "$state" "$RST"
-    fi
-
-    i=$((i + 1))
-  done
-
-  draw_menu_hint
-}
-
 menu_ui() {
+  # --- render once ---
+  clear
   hide_cursor
-  cls
+  trap 'show_cursor; printf "%s\n" "$RST"; exit 0' INT TERM EXIT
 
-  # 1) Рисуем баннер один раз (центр)
-  draw_banner_once "Synthex"
+  draw_logo
 
-  # 2) Рисуем меню один раз
-  draw_menu_in_place
+  # Where to place menu: directly after logo.
+  # We assume logo uses 8 lines (6 + 2 blanks). Adjust if you change draw_logo.
+  # You can tune this number if needed.
+  MENU_ROW=12
 
-  # 3) Дальше только обновляем меню-строки
+  CUR=0
+  draw_menu_once
+
+  # --- incremental update loop ---
+  n="$(items_count)"
   while :; do
     key="$(read_key)"
-    [ -z "$key" ] && { sleep 0.05; continue; }
 
     case "$key" in
-      q) return 2 ;;
-      "$(printf '\033[A')") CUR=$((CUR - 1)) ;;
-      "$(printf '\033[B')") CUR=$((CUR + 1)) ;;
-      " ")
+      q) show_cursor; return 2 ;;
+
+      "$(printf '\033[A')")  # up
+        old="$CUR"
+        CUR=$((CUR - 1))
+        [ "$CUR" -lt 0 ] && CUR=$((n - 1))
+        render_line "$old" 0
+        render_line "$CUR" 1
+        ;;
+
+      "$(printf '\033[B')")  # down
+        old="$CUR"
+        CUR=$((CUR + 1))
+        [ "$CUR" -ge "$n" ] && CUR=0
+        render_line "$old" 0
+        render_line "$CUR" 1
+        ;;
+
+      " ") # toggle current option + redraw ONLY current line
         case "$(get_key "$CUR")" in
           DO_BACKUP)    DO_BACKUP=$((1-DO_BACKUP)) ;;
           DO_UPDATE)    DO_UPDATE=$((1-DO_UPDATE)) ;;
           DO_AUTOSTART) DO_AUTOSTART=$((1-DO_AUTOSTART)) ;;
           DO_APPLY_NOW) DO_APPLY_NOW=$((1-DO_APPLY_NOW)) ;;
         esac
+        render_line "$CUR" 1
         ;;
-      "$(printf '\n')"|"\r")
-        [ "$(get_key "$CUR")" = "START" ] && return 0
+
+      "$(printf '\n')"|"\r") # enter
+        [ "$(get_key "$CUR")" = "START" ] && { show_cursor; return 0; }
         ;;
     esac
-
-    n="$(items_count)"
-    [ "$CUR" -lt 0 ] && CUR=0
-    [ "$CUR" -ge "$n" ] && CUR=$((n-1))
-
-    # ВАЖНО: вместо clear — перерисовываем только меню-область
-    draw_menu_in_place
   done
 }
 
