@@ -114,33 +114,62 @@ backup_if_exists() {
 }
 
 # ──────────────────────────────── Center Logo + Left Menu ────────────────────────────────
-# Needs: POSIX sh + tput (termux-tools)
+# ── Terraform pixel logo: pink → purple (truecolor) ──
+G1="${ESC}[38;2;255;90;87m"   # #FF5A57
+G2="${ESC}[38;2;236;79;97m"
+G3="${ESC}[38;2;217;68;106m"
+G4="${ESC}[38;2;198;57;116m"
+G5="${ESC}[38;2;179;46;125m"
+G6="${ESC}[38;2;160;35;135m"
+G7="${ESC}[38;2;141;24;144m"
+G8="${ESC}[38;2;122;13;154m"
+G9="${ESC}[38;2;103;0;163m"   # #6700A3
+
 cols() { tput cols 2>/dev/null || printf "80"; }
 
-# center_print COLOR "text"
-center_print() {
-  c="$1"; s="$2"
+# Центровка по "чистому" тексту (без ANSI), печать — цветной строкой
+center_grad() {
+  colored="$1"
+  plain="$2"
   w="$(cols)"
-  len="${#s}"
+  len="${#plain}"
   pad=$(( (w - len) / 2 ))
   [ "$pad" -lt 0 ] && pad=0
-  printf "%s%*s%s%s\n" "$c" "$pad" "" "$s" "$RST"
+  printf "%*s%b%s\n" "$pad" "" "$colored" "$RST"
 }
-
-# Simple "gradient" across lines (pink -> orange -> yellow vibe)
-G1="${ESC}[38;5;205m"  # pink
-G2="${ESC}[38;5;212m"
-G3="${ESC}[38;5;214m"
-G4="${ESC}[38;5;220m"  # yellow
 
 draw_logo() {
   printf "\n"
-  center_print "$G1$BOLD" "███████╗██╗   ██╗███╗   ███╗██████╗ ██╗  ██╗ ██████╗ ██╗  ██╗██╗   ██╗"
-  center_print "$G2$BOLD" "██╔════╝╚██╗ ██╔╝████╗ ████║██╔══██╗██║  ██║██╔═══██╗██║  ██║╚██╗ ██╔╝"
-  center_print "$G3$BOLD" "███████╗ ╚████╔╝ ██╔████╔██║██████╔╝███████║██║   ██║███████║ ╚████╔╝ "
-  center_print "$G4$BOLD" "╚════██║  ╚██╔╝  ██║╚██╔╝██║██╔═══╝ ██╔══██║██║   ██║██╔══██║  ╚██╔╝  "
-  center_print "$G3$BOLD" "███████║   ██║   ██║ ╚═╝ ██║██║     ██║  ██║╚██████╔╝██║  ██║   ██║   "
-  center_print "$G2$BOLD" "╚══════╝   ╚═╝   ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   "
+
+  # 7 строк "пиксельного" Terraform (TERRAFORM), каждая буква — свой шаг градиента
+  p1="█████ █████ ████  ████  ████  █████  ███   ████  █   █"
+  c1="${G1}${BOLD}█████${RST} ${G2}${BOLD}█████${RST} ${G3}${BOLD}████ ${RST} ${G4}${BOLD}████ ${RST} ${G5}${BOLD} ███ ${RST} ${G6}${BOLD}█████${RST} ${G7}${BOLD} ███ ${RST} ${G8}${BOLD}████ ${RST} ${G9}${BOLD}█   █${RST}"
+  center_grad "$c1" "$p1"
+
+  p2="  █   █     █   █ █   █ █   █ █     █   █ █   █ ██ ██"
+  c2="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█   █${RST} ${G4}${BOLD}█   █${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█   █${RST} ${G9}${BOLD}██ ██${RST}"
+  center_grad "$c2" "$p2"
+
+  p3="  █   █     █   █ █   █ █   █ █     █   █ █   █ █ █ █"
+  c3="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█   █${RST} ${G4}${BOLD}█   █${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█   █${RST} ${G9}${BOLD}█ █ █${RST}"
+  center_grad "$c3" "$p3"
+
+  p4="  █   ████  ████  ████  █████ ████  █   █ ████  █   █"
+  c4="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}████ ${RST} ${G3}${BOLD}████ ${RST} ${G4}${BOLD}████ ${RST} ${G5}${BOLD}█████${RST} ${G6}${BOLD}████ ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}████ ${RST} ${G9}${BOLD}█   █${RST}"
+  center_grad "$c4" "$p4"
+
+  p5="  █   █     █ █   █ █   █   █ █     █   █ █ █   █   █"
+  c5="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█ █  ${RST} ${G4}${BOLD}█ █  ${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█ █  ${RST} ${G9}${BOLD}█   █${RST}"
+  center_grad "$c5" "$p5"
+
+  p6="  █   █     █  █  █  █  █   █ █     █   █ █  █  █   █"
+  c6="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█    ${RST} ${G3}${BOLD}█  █ ${RST} ${G4}${BOLD}█  █ ${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD}█   █${RST} ${G8}${BOLD}█  █ ${RST} ${G9}${BOLD}█   █${RST}"
+  center_grad "$c6" "$p6"
+
+  p7="  █   █████ █   █ █   █ █   █ █     ███   █   █ █   █"
+  c7="${G1}${BOLD}  █  ${RST} ${G2}${BOLD}█████${RST} ${G3}${BOLD}█   █${RST} ${G4}${BOLD}█   █${RST} ${G5}${BOLD}█   █${RST} ${G6}${BOLD}█    ${RST} ${G7}${BOLD} ███ ${RST} ${G8}${BOLD}█   █${RST} ${G9}${BOLD}█   █${RST}"
+  center_grad "$c7" "$p7"
+
   printf "\n"
 }
 
