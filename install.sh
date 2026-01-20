@@ -198,7 +198,7 @@ draw_menu() {
 # read single key (works in Termux)
 read_key() {
   oldstty="$(stty -g)"
-  stty -echo -icanon time 0 min 0 2>/dev/null || true
+  stty -echo -icanon time 0 min 1 2>/dev/null || true
   k="$(dd bs=1 count=1 2>/dev/null || true)"
   # if it's ESC, read 2 more bytes for arrows
   if [ "$k" = "$(printf '\033')" ]; then
@@ -216,7 +216,6 @@ menu_ui() {
     draw_menu
 
     key="$(read_key)"
-    [ -z "$key" ] && { sleep 0.05; continue; }
 
     case "$key" in
       q) return 2 ;;                           # quit
