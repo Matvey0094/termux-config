@@ -55,4 +55,3 @@ source "$XDG_CONFIG_HOME/zsh/fzf.zsh" 2>/dev/null || true
 
 # colors (optional)
 command -v vivid >/dev/null 2>&1 && export LS_COLORS="$(vivid generate zenburn)"
-export EZA_COLORS="da=38;5;205:hd=38;5;141:sn=38;5;110:uu=38;5;250:gu=38;5;250"
