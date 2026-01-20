@@ -106,54 +106,148 @@ backup_if_exists() {
   ok "Backup: $b"
 }
 
-# ──────────────────────────────── BANNER ────────────────────────────────
-printf "\n"
-hr "╔══════════════════════════════════════════════════════════════════════╗"
-printf "%s%s║%s  %sfastfetch%s / %sTermux%s — %sone-shot installer%s (cyber edition)  %s%s║%s\n" \
-  "$C_PURP" "$BOLD" "$RST" \
-  "$C_PINK" "$RST" "$C_CYAN" "$RST" "$C_PURP" "$RST" \
-  "$C_PURP" "$BOLD" "$RST"
-hr "╚══════════════════════════════════════════════════════════════════════╝"
-printf "%sRepo:%s %s/%s (%s)%s\n" "$DIM$C_GRAY" "$RST" "$GH_USER" "$GH_REPO" "$GH_BRANCH" "$RST"
-printf "%sLog:%s  %s%s\n" "$DIM$C_GRAY" "$RST" "$LOG_FILE" "$RST"
+# ──────────────────────────────── Center Logo + Left Menu ────────────────────────────────
+# Needs: POSIX sh + tput (termux-tools)
+cols() { tput cols 2>/dev/null || printf "80"; }
 
-# ──────────────────────────────── MENU ────────────────────────────────
+# center_print COLOR "text"
+center_print() {
+  c="$1"; s="$2"
+  w="$(cols)"
+  len="${#s}"
+  pad=$(( (w - len) / 2 ))
+  [ "$pad" -lt 0 ] && pad=0
+  printf "%s%*s%s%s\n" "$c" "$pad" "" "$s" "$RST"
+}
+
+# Simple "gradient" across lines (pink -> orange -> yellow vibe)
+G1="${ESC}[38;5;205m"  # pink
+G2="${ESC}[38;5;212m"
+G3="${ESC}[38;5;214m"
+G4="${ESC}[38;5;220m"  # yellow
+
+draw_logo() {
+  printf "\n"
+  center_print "$G1$BOLD" "███████╗██╗   ██╗███╗   ███╗██████╗ ██╗  ██╗ ██████╗ ██╗  ██╗██╗   ██╗"
+  center_print "$G2$BOLD" "██╔════╝╚██╗ ██╔╝████╗ ████║██╔══██╗██║  ██║██╔═══██╗██║  ██║╚██╗ ██╔╝"
+  center_print "$G3$BOLD" "███████╗ ╚████╔╝ ██╔████╔██║██████╔╝███████║██║   ██║███████║ ╚████╔╝ "
+  center_print "$G4$BOLD" "╚════██║  ╚██╔╝  ██║╚██╔╝██║██╔═══╝ ██╔══██║██║   ██║██╔══██║  ╚██╔╝  "
+  center_print "$G3$BOLD" "███████║   ██║   ██║ ╚═╝ ██║██║     ██║  ██║╚██████╔╝██║  ██║   ██║   "
+  center_print "$G2$BOLD" "╚══════╝   ╚═╝   ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   "
+  printf "\n"
+}
+
+# Menu state
+# (You can map these to your DO_* vars later)
+MENU_ITEMS="Backups before overwrite|System update (pkg update/upgrade)|Enable fastfetch autostart|Apply zshrc now (exec zsh -l)|Start installer"
+MENU_KEYS="DO_BACKUP|DO_UPDATE|DO_AUTOSTART|DO_APPLY_NOW|START"
 DO_BACKUP=1
 DO_UPDATE=0
 DO_AUTOSTART=0
 DO_APPLY_NOW=0
 
-menu_draw() {
-  printf "\n%s%s┌─ Installer options ───────────────────────────────────────────────┐%s\n" "$C_PURP" "$BOLD" "$RST"
-  printf "%s│%s  1) Backups before overwrite:        %s[%s]%s\n" "$C_PURP" "$RST" "$C_PINK" "$( [ "$DO_BACKUP" -eq 1 ] && printf "Y" || printf "N" )" "$RST"
-  printf "%s│%s  2) pkg update/upgrade (slower):      %s[%s]%s\n" "$C_PURP" "$RST" "$C_PINK" "$( [ "$DO_UPDATE" -eq 1 ] && printf "Y" || printf "N" )" "$RST"
-  printf "%s│%s  3) Enable fastfetch autostart:       %s[%s]%s\n" "$C_PURP" "$RST" "$C_PINK" "$( [ "$DO_AUTOSTART" -eq 1 ] && printf "Y" || printf "N" )" "$RST"
-  printf "%s│%s  4) Apply zshrc now (exec zsh -l):    %s[%s]%s\n" "$C_PURP" "$RST" "$C_PINK" "$( [ "$DO_APPLY_NOW" -eq 1 ] && printf "Y" || printf "N" )" "$RST"
-  printf "%s│%s\n" "$C_PURP" "$RST"
-  printf "%s│%s  Branch: %s%s%s  (set GH_BRANCH env if needed)\n" "$C_PURP" "$RST" "$C_CYAN" "$GH_BRANCH" "$RST"
-  printf "%s%s└──────────────────────────────────────────────────────────────────┘%s\n" "$C_PURP" "$BOLD" "$RST"
-  printf "%sToggle:%s type numbers (e.g. 1 3), Enter = start, q = quit\n" "$DIM$C_GRAY" "$RST"
+CUR=0
+
+# Helpers
+get_item() { printf "%s" "$MENU_ITEMS" | awk -F'|' -v i="$1" '{print $(i+1)}'; }
+get_key()  { printf "%s" "$MENU_KEYS"  | awk -F'|' -v i="$1" '{print $(i+1)}'; }
+items_count() { printf "%s" "$MENU_ITEMS" | awk -F'|' '{print NF}'; }
+
+on_off() { [ "$1" -eq 1 ] && printf "ON" || printf "OFF"; }
+
+draw_menu() {
+  n="$(items_count)"
+  printf "%sChoose:%s\n" "$C_CYAN$BOLD" "$RST"
+
+  i=0
+  while [ "$i" -lt "$n" ]; do
+    label="$(get_item "$i")"
+    key="$(get_key "$i")"
+
+    # Determine state text
+    state=""
+    case "$key" in
+      DO_BACKUP)     state="$(on_off "$DO_BACKUP")" ;;
+      DO_UPDATE)     state="$(on_off "$DO_UPDATE")" ;;
+      DO_AUTOSTART)  state="$(on_off "$DO_AUTOSTART")" ;;
+      DO_APPLY_NOW)  state="$(on_off "$DO_APPLY_NOW")" ;;
+      START)         state="" ;;
+    esac
+
+    # cursor marker + colors
+    if [ "$i" -eq "$CUR" ]; then
+      pointer="${C_PINK}${BOLD}>${RST}"
+      linec="${C_PINK}${BOLD}"
+    else
+      pointer=" "
+      linec="$RST"
+    fi
+
+    if [ "$key" = "START" ]; then
+      printf " %s %s%s%s\n" "$pointer" "$linec" "$label" "$RST"
+    else
+      printf " %s %s%s%s %s[%s]%s\n" "$pointer" "$linec" "$label" "$RST" "$DIM$C_GRAY" "$state" "$RST"
+    fi
+
+    i=$((i + 1))
+  done
+
+  printf "\n%s%s%s\n" "$DIM$C_GRAY" "↕ navigate • Space toggle • Enter submit • q quit" "$RST"
 }
 
-menu_loop() {
+# read single key (works in Termux)
+read_key() {
+  oldstty="$(stty -g)"
+  stty -echo -icanon time 0 min 0 2>/dev/null || true
+  k="$(dd bs=1 count=1 2>/dev/null || true)"
+  # if it's ESC, read 2 more bytes for arrows
+  if [ "$k" = "$(printf '\033')" ]; then
+    k2="$(dd bs=1 count=2 2>/dev/null || true)"
+    k="$k$k2"
+  fi
+  stty "$oldstty" 2>/dev/null || true
+  printf "%s" "$k"
+}
+
+menu_ui() {
   while :; do
-    menu_draw
-    printf "%s> %s" "$C_PINK" "$RST"
-    IFS= read -r ans || true
-    [ -z "${ans:-}" ] && break
-    [ "$ans" = "q" ] && exit 0
-    for n in $ans; do
-      case "$n" in
-        1) DO_BACKUP=$((1-DO_BACKUP));;
-        2) DO_UPDATE=$((1-DO_UPDATE));;
-        3) DO_AUTOSTART=$((1-DO_AUTOSTART));;
-        4) DO_APPLY_NOW=$((1-DO_APPLY_NOW));;
-      esac
-    done
+    clear
+    draw_logo
+    draw_menu
+
+    key="$(read_key)"
+    [ -z "$key" ] && { sleep 0.05; continue; }
+
+    case "$key" in
+      q) return 2 ;;                           # quit
+      "$(printf '\033[A')") CUR=$((CUR - 1)) ;; # up
+      "$(printf '\033[B')") CUR=$((CUR + 1)) ;; # down
+      " ") # toggle
+        case "$(get_key "$CUR")" in
+          DO_BACKUP)    DO_BACKUP=$((1-DO_BACKUP)) ;;
+          DO_UPDATE)    DO_UPDATE=$((1-DO_UPDATE)) ;;
+          DO_AUTOSTART) DO_AUTOSTART=$((1-DO_AUTOSTART)) ;;
+          DO_APPLY_NOW) DO_APPLY_NOW=$((1-DO_APPLY_NOW)) ;;
+        esac
+        ;;
+      "$(printf '\n')"|"\r")
+        [ "$(get_key "$CUR")" = "START" ] && return 0
+        ;;
+    esac
+
+    n="$(items_count)"
+    [ "$CUR" -lt 0 ] && CUR=0
+    [ "$CUR" -ge "$n" ] && CUR=$((n-1))
   done
 }
 
-menu_loop
+# Run menu and map vars to your installer flags
+if menu_ui; then
+  : # continue script
+else
+  exit_code=$?
+  [ "$exit_code" -eq 2 ] && exit 0
+fi
 
 # ──────────────────────────────── STEPS ────────────────────────────────
 STEP=0
