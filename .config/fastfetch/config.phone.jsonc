@@ -1,0 +1,112 @@
+/   ╭──━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━──╮
+//                            ⬡ Fastfetch ⬡
+//   ╰──━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━──╯
+
+{"$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+
+// ── logo ──────────────────────────────────────────────────────────
+
+  "logo": {
+    "type": "file",
+    "source": "~/.config/fastfetch/logo.txt",
+    "position": "top",
+    "padding": { "right": 0, "left": 7 },
+    "color": { "1": "magenta" }
+  },
+
+// ── display ───────────────────────────────────────────────────────
+
+  "display": {
+    "key": {
+    "type": "string",
+    "width": 22,
+    "paddingLeft": 3
+    },
+
+    "separator": "  <U+F444>  ",
+
+    "color": {
+      "keys": "light_red"
+    },
+
+    "size": {
+      "binaryPrefix": "jedec"
+    },
+
+    "bar": {
+      "width": 52,
+      "char": {
+        "elapsed": "█",
+        "total": "░"
+      }
+    },
+
+    "percent": {
+      "type": 11,
+      "color": {
+        "green": "green",
+        "yellow": "light_yellow",
+        "red": "light_red"
+      }
+    }
+  },
+
+// ── moduls ────────────────────────────────────────────────────────
+
+  "modules": [
+    "break",
+
+  { "type": "custom", "format": "┌────────────────────────── System ──────────────────────────┐" },
+  { "type": "custom", "format": "" },
+
+  { "type": "host",     "key": "<U+F0035>  Device  " },
+  { "type": "command",  "key": "<U+F0322>  Kernel  ", "text": "uname -r | cut -d- -f1" },
+  { "type": "packages", "key": "<U+F03D7>  Packages" },
+  { "type": "shell",    "key": "<U+F07B7>  Shell   " },
+  { "type": "terminal", "key": "<U+F489>  Terminal" },
+  { "type": "font",     "key": "<U+F031>  Font    " },
+
+  { "type": "custom", "format": "" },
+  { "type": "custom", "format": "  ─────────────────────────────────────────────────────────  " },
+  { "type": "custom", "format": "" },
+
+  {
+    "key": "<U+F02CA> Storage            ",
+    "type": "disk",
+     "keyColor": "35",
+     "folders": ["/storage/emulated"],
+     "format": "        {size-used} / {size-total} ({size-percentage})"
+  },
+
+  {
+    "key": " ",
+    "type": "disk",
+    "keyColor": "35",
+    "folders": ["/storage/emulated"],
+    "format": "  {size-percentage-bar}"
+  },
+
+  { "type": "custom", "format": "" },
+
+  {
+    "key": "<U+F035B> Memory              ",
+    "type": "memory",
+    "keyColor": "35",
+    "format": "           {used} / {total} ({percentage})"
+  },
+
+  {
+    "key": " ",
+    "type": "memory",
+    "keyColor": "35",
+    "format": "  {percentage-bar}"
+  },
+
+  { "type": "custom", "format": "" },
+  { "type": "custom", "format": "└────────────────────────────────────────────────────────────┘" },
+
+
+  { "type": "colors", "symbol": "circle", "paddingLeft": 22 }
+
+  ]
+}
