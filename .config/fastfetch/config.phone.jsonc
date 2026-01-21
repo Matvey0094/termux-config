@@ -59,19 +59,19 @@
   { "type": "custom", "format": "┌────────────────────────── System ──────────────────────────┐" },
   { "type": "custom", "format": "" },
 
-  { "type": "host",     "key": "  Device  " },
+  { "type": "host",     "key": "  Device   " },
   { "type": "command",  "key": "󰌢  Kernel  ", "text": "uname -r | cut -d- -f1" },
   { "type": "packages", "key": "󰏗  Packages" },
   { "type": "shell",    "key": "󰞷  Shell   " },
-  { "type": "terminal", "key": "  Terminal" },
-  { "type": "font",     "key": "  Font    " },
+  { "type": "terminal", "key": "  Terminal " },
+  { "type": "font",     "key": "  Font     " },
 
   { "type": "custom", "format": "" },
   { "type": "custom", "format": "  ─────────────────────────────────────────────────────────  " },
   { "type": "custom", "format": "" },
 
   {
-    "key": "<U+F02CA> Storage            ",
+    "key": "󰋊 Storage            ",
     "type": "disk",
      "keyColor": "35",
      "folders": ["/storage/emulated"],
@@ -89,7 +89,7 @@
   { "type": "custom", "format": "" },
 
   {
-    "key": "<U+F035B> Memory              ",
+    "key": " Memory              ",
     "type": "memory",
     "keyColor": "35",
     "format": "           {used} / {total} ({percentage})"
