@@ -59,12 +59,12 @@
   { "type": "custom", "format": "┌────────────────────────── System ──────────────────────────┐" },
   { "type": "custom", "format": "" },
 
-  { "type": "host",     "key": "<U+F0035>  Device  " },
-  { "type": "command",  "key": "<U+F0322>  Kernel  ", "text": "uname -r | cut -d- -f1" },
-  { "type": "packages", "key": "<U+F03D7>  Packages" },
-  { "type": "shell",    "key": "<U+F07B7>  Shell   " },
-  { "type": "terminal", "key": "<U+F489>  Terminal" },
-  { "type": "font",     "key": "<U+F031>  Font    " },
+  { "type": "host",     "key": "  Device  " },
+  { "type": "command",  "key": "󰌢  Kernel  ", "text": "uname -r | cut -d- -f1" },
+  { "type": "packages", "key": "󰏗  Packages" },
+  { "type": "shell",    "key": "󰞷  Shell   " },
+  { "type": "terminal", "key": "  Terminal" },
+  { "type": "font",     "key": "  Font    " },
 
   { "type": "custom", "format": "" },
   { "type": "custom", "format": "  ─────────────────────────────────────────────────────────  " },
